@@ -14,10 +14,8 @@ const PRICING = {
 let salesData = JSON.parse(localStorage.getItem('jksSalesData')) || [];
 let expensesData = JSON.parse(localStorage.getItem('jksExpensesData')) || [];
 let inventoryData = JSON.parse(localStorage.getItem('jksInventoryData')) || {
-    'Green Apple': 20,
-    'Blueberry': 20,
-    'Strawberry': 20,
-    'Lychee': 20,
+    'Medium': 50,
+    'Large': 50,
     'Nata': 50
 };
 
@@ -43,11 +41,10 @@ function switchTab(tabName) {
 
 // Update price display based on selections
 function updatePrice() {
-    const flavor = document.getElementById('flavor').value;
     const size = document.getElementById('size').value;
     const addon = document.getElementById('addon').value;
     
-    if (!flavor || !size) {
+    if (!size) {
         document.getElementById('priceDisplay').textContent = 'Price: Select all options';
         return;
     }
@@ -61,14 +58,13 @@ function updatePrice() {
 
 // Record a single cup sale
 function recordCupSale() {
-    const flavor = document.getElementById('flavor').value;
     const size = document.getElementById('size').value;
     const addon = document.getElementById('addon').value;
     const cupCost = parseFloat(document.getElementById('cupCost').value);
     
     // Validation
-    if (!flavor || !size) {
-        alert('Please select flavor and size');
+    if (!size) {
+        alert('Please select cup size');
         return;
     }
     
@@ -78,8 +74,8 @@ function recordCupSale() {
     }
     
     // Check inventory
-    if (inventoryData[flavor] <= 0) {
-        alert(`Out of ${flavor}! Please restock.`);
+    if (inventoryData[size] <= 0) {
+        alert(`Out of ${size} cups! Please restock.`);
         return;
     }
     
@@ -97,7 +93,6 @@ function recordCupSale() {
     // Create sale record
     const sale = {
         id: Date.now(),
-        flavor: flavor,
         size: size,
         addon: addon,
         price: totalPrice,
@@ -110,7 +105,7 @@ function recordCupSale() {
     salesData.push(sale);
     
     // Deduct inventory
-    inventoryData[flavor]--;
+    inventoryData[size]--;
     if (addon === 'Yes') {
         inventoryData['Nata']--;
     }
@@ -119,7 +114,6 @@ function recordCupSale() {
     saveData();
     
     // Clear form
-    document.getElementById('flavor').value = '';
     document.getElementById('size').value = '';
     document.getElementById('addon').value = 'No';
     document.getElementById('cupCost').value = '';
@@ -211,21 +205,21 @@ function renderExpenseLog() {
 }
 
 // Add inventory
-function addInventory() {
-    const flavor = document.getElementById('invFlavor').value;
-    const quantity = parseInt(document.getElementById('addStock').value);
+function addInventory(size) {
+    const inputId = size === 'Medium' ? 'addStock12' : 'addStock16';
+    const successId = size === 'Medium' ? 'invSuccess12' : 'invSuccess16';
+    const quantity = parseInt(document.getElementById(inputId).value);
     
-    if (!flavor || isNaN(quantity) || quantity <= 0) {
-        alert('Please select flavor and enter valid quantity');
+    if (isNaN(quantity) || quantity <= 0) {
+        alert('Please enter valid quantity');
         return;
     }
     
-    inventoryData[flavor] = (inventoryData[flavor] || 0) + quantity;
+    inventoryData[size] = (inventoryData[size] || 0) + quantity;
     
-    document.getElementById('invFlavor').value = '';
-    document.getElementById('addStock').value = '10';
+    document.getElementById(inputId).value = '10';
     
-    const successMsg = document.getElementById('invSuccess');
+    const successMsg = document.getElementById(successId);
     successMsg.classList.add('show');
     setTimeout(() => successMsg.classList.remove('show'), 3000);
     
@@ -260,28 +254,32 @@ function updateNata() {
 // Render inventory display
 function renderInventory() {
     const inventoryGrid = document.getElementById('inventoryGrid');
-    const flavors = ['Green Apple', 'Blueberry', 'Strawberry', 'Lychee'];
-    const emojis = {
-        'Green Apple': '🟢',
-        'Blueberry': '🔵',
-        'Strawberry': '🔴',
-        'Lychee': '🩷'
-    };
     
     let html = '';
-    flavors.forEach(flavor => {
-        const stock = inventoryData[flavor] || 0;
-        const isLow = stock <= 5;
-        html += `
-            <div class="inventory-item ${isLow ? 'low' : ''}">
-                <h3>${emojis[flavor]} ${flavor}</h3>
-                <div class="count">${stock}</div>
-                <small>${isLow ? '⚠️ Low Stock!' : 'cups available'}</small>
-            </div>
-        `;
-    });
     
-    // Add Nata
+    // 12oz (Medium)
+    const mediumStock = inventoryData['Medium'] || 0;
+    const mediumLow = mediumStock <= 10;
+    html += `
+        <div class="inventory-item ${mediumLow ? 'low' : ''}">
+            <h3>📏 12oz (Medium)</h3>
+            <div class="count">${mediumStock}</div>
+            <small>${mediumLow ? '⚠️ Low Stock!' : 'cups available'}</small>
+        </div>
+    `;
+    
+    // 16oz (Large)
+    const largeStock = inventoryData['Large'] || 0;
+    const largeLow = largeStock <= 10;
+    html += `
+        <div class="inventory-item ${largeLow ? 'low' : ''}">
+            <h3>📏 16oz (Large)</h3>
+            <div class="count">${largeStock}</div>
+            <small>${largeLow ? '⚠️ Low Stock!' : 'cups available'}</small>
+        </div>
+    `;
+    
+    // Nata
     const nataStock = inventoryData['Nata'] || 0;
     const nataLow = nataStock <= 10;
     html += `
@@ -391,13 +389,6 @@ function renderDailyLog() {
         return;
     }
     
-    const emojis = {
-        'Green Apple': '🟢',
-        'Blueberry': '🔵',
-        'Strawberry': '🔴',
-        'Lychee': '🩷'
-    };
-    
     let html = '';
     // Reverse to show most recent first
     [...salesData].reverse().forEach(sale => {
@@ -406,7 +397,7 @@ function renderDailyLog() {
             <div class="log-entry">
                 <div>
                     <span class="log-time">${sale.timestamp}</span> - 
-                    ${emojis[sale.flavor]} ${sale.flavor} (${sale.size})
+                    ${sale.size === 'Medium' ? '📏 12oz' : '📏 16oz'}
                     ${sale.addon === 'Yes' ? '+ 🧃 Nata' : ''}
                 </div>
                 <div style="margin-top: 5px; font-size: 0.85em;">
@@ -423,12 +414,6 @@ function renderDailyLog() {
 // Render summary table
 function renderSummaryTable() {
     const summaryTable = document.getElementById('summaryTable');
-    const emojis = {
-        'Green Apple': '🟢',
-        'Blueberry': '🔵',
-        'Strawberry': '🔴',
-        'Lychee': '🩷'
-    };
     
     if (salesData.length === 0) {
         summaryTable.innerHTML = '';
@@ -438,11 +423,11 @@ function renderSummaryTable() {
     let html = '';
     salesData.forEach((sale, index) => {
         const profitClass = sale.profit >= 0 ? 'style="color: #10b981;"' : 'style="color: #ef4444;"';
+        const sizeDisplay = sale.size === 'Medium' ? '12oz' : '16oz';
         html += `
             <tr>
                 <td>${index + 1}</td>
-                <td>${emojis[sale.flavor]} ${sale.flavor}</td>
-                <td>${sale.size}</td>
+                <td>${sizeDisplay}</td>
                 <td>${sale.addon}</td>
                 <td>₱${sale.price.toFixed(2)}</td>
                 <td>₱${sale.cost.toFixed(2)}</td>
@@ -466,7 +451,7 @@ function deleteSale(saleId) {
     const sale = salesData[saleIndex];
     
     // Restore inventory
-    inventoryData[sale.flavor]++;
+    inventoryData[sale.size]++;
     if (sale.addon === 'Yes') {
         inventoryData['Nata']++;
     }
@@ -483,19 +468,14 @@ function deleteSale(saleId) {
 function updateLowStockAlerts() {
     const lowStockAlert = document.getElementById('lowStockAlert');
     let alerts = [];
-    const emojis = {
-        'Green Apple': '🟢',
-        'Blueberry': '🔵',
-        'Strawberry': '🔴',
-        'Lychee': '🩷'
-    };
     
-    const flavors = ['Green Apple', 'Blueberry', 'Strawberry', 'Lychee'];
-    flavors.forEach(flavor => {
-        if (inventoryData[flavor] <= 5) {
-            alerts.push(`${emojis[flavor]} ${flavor}: Only ${inventoryData[flavor]} cups left`);
-        }
-    });
+    if ((inventoryData['Medium'] || 0) <= 10) {
+        alerts.push(`📏 12oz (Medium): Only ${inventoryData['Medium']} cups left`);
+    }
+    
+    if ((inventoryData['Large'] || 0) <= 10) {
+        alerts.push(`📏 16oz (Large): Only ${inventoryData['Large']} cups left`);
+    }
     
     if (inventoryData['Nata'] <= 10) {
         alerts.push(`🧃 Nata de Coco: Only ${inventoryData['Nata']} pieces left`);
@@ -514,7 +494,7 @@ function clearDailyLog() {
     
     // Restore all inventory
     salesData.forEach(sale => {
-        inventoryData[sale.flavor]++;
+        inventoryData[sale.size]++;
         if (sale.addon === 'Yes') {
             inventoryData['Nata']++;
         }
