@@ -319,10 +319,6 @@
             background: #dc2626;
         }
 
-        .flavor-emoji {
-            font-size: 1.5em;
-        }
-
         .size-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -344,9 +340,13 @@
         }
 
         .size-stat-value {
-            font-size: 1.8em;
+            font-size: 2em;
             font-weight: bold;
             color: #667eea;
+        }
+
+        .size-stat-box small {
+            color: #666;
         }
     </style>
 </head>
@@ -354,7 +354,7 @@
     <div class="container">
         <header>
             <h1>🥤 JK's Fruit Soda - Daily Business Tracker</h1>
-            <p>Track Revenue, Profit & Inventory Per Cup Size</p>
+            <p>Track Revenue, Profit & Inventory by Cup Size</p>
         </header>
 
         <div class="tabs">
@@ -406,7 +406,7 @@
                 <div class="card">
                     <h2>💰 Today's Totals</h2>
                     <div class="metric">
-                        <span class="metric-label">Cups Sold</span>
+                        <span class="metric-label">Total Cups Sold</span>
                         <span class="metric-value" id="cupsSold">0</span>
                     </div>
                     <div class="metric">
@@ -421,7 +421,7 @@
                         <span class="metric-label">Total Expenses</span>
                         <span class="metric-value" id="totalExpenses">₱0.00</span>
                     </div>
-                    <div class="metric loss">
+                    <div class="metric profit">
                         <span class="metric-label">Net Profit</span>
                         <span class="metric-value" id="totalProfit">₱0.00</span>
                     </div>
@@ -432,7 +432,7 @@
                 </div>
 
                 <div class="card">
-                    <h2>📊 Sales by Cup Size</h2>
+                    <h2>📏 Sales by Cup Size</h2>
                     <div class="size-stats">
                         <div class="size-stat-box">
                             <h4>12 oz (Medium)</h4>
@@ -567,7 +567,7 @@
                 </div>
 
                 <div class="card">
-                    <h2>📊 Size Performance</h2>
+                    <h2>📏 Cup Size Breakdown</h2>
                     <div class="metric">
                         <span class="metric-label">12oz (Medium) Sold</span>
                         <span class="metric-value" id="perfMedium">0</span>
