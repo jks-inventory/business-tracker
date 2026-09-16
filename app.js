@@ -19,6 +19,8 @@ let inventoryData = JSON.parse(localStorage.getItem('jksInventoryData')) || {
     'Nata': 50
 };
 
+let editingSaleId = null;
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     renderInventory();
@@ -73,41 +75,111 @@ function recordCupSale() {
         return;
     }
     
-    // Check inventory
-    if (inventoryData[size] <= 0) {
-        alert(`Out of ${size} cups! Please restock.`);
-        return;
-    }
-    
-    if (addon === 'Yes' && inventoryData['Nata'] <= 0) {
-        alert('Out of Nata de Coco! Please restock.');
-        return;
-    }
-    
-    // Calculate price
-    const basePrice = PRICING.sizes[size];
-    const addonPrice = PRICING.addon[addon];
-    const totalPrice = basePrice + addonPrice;
-    const profit = totalPrice - cupCost;
-    
-    // Create sale record
-    const sale = {
-        id: Date.now(),
-        size: size,
-        addon: addon,
-        price: totalPrice,
-        cost: cupCost,
-        profit: profit,
-        timestamp: new Date().toLocaleTimeString()
-    };
-    
-    // Add to sales data
-    salesData.push(sale);
-    
-    // Deduct inventory
-    inventoryData[size]--;
-    if (addon === 'Yes') {
-        inventoryData['Nata']--;
+    if (editingSaleId) {
+        // Update existing sale
+        const saleIndex = salesData.findIndex(s => s.id === editingSaleId);
+        if (saleIndex === -1) return;
+        
+        const oldSale = salesData[saleIndex];
+        
+        // Restore old inventory
+        inventoryData[oldSale.size]++;
+        if (oldSale.addon === 'Yes') {
+            inventoryData['Nata']++;
+        }
+        
+        // Check new inventory
+        if (inventoryData[size] <= 0) {
+            alert(`Out of ${size} cups! Please restock.`);
+            // Restore back
+            inventoryData[oldSale.size]--;
+            if (oldSale.addon === 'Yes') {
+                inventoryData['Nata']--;
+            }
+            return;
+        }
+        
+        if (addon === 'Yes' && inventoryData['Nata'] <= 0) {
+            alert('Out of Nata de Coco! Please restock.');
+            // Restore back
+            inventoryData[oldSale.size]--;
+            if (oldSale.addon === 'Yes') {
+                inventoryData['Nata']--;
+            }
+            return;
+        }
+        
+        // Calculate new price
+        const basePrice = PRICING.sizes[size];
+        const addonPrice = PRICING.addon[addon];
+        const totalPrice = basePrice + addonPrice;
+        const profit = totalPrice - cupCost;
+        
+        // Update sale
+        salesData[saleIndex] = {
+            ...oldSale,
+            size: size,
+            addon: addon,
+            price: totalPrice,
+            cost: cupCost,
+            profit: profit
+        };
+        
+        // Deduct new inventory
+        inventoryData[size]--;
+        if (addon === 'Yes') {
+            inventoryData['Nata']--;
+        }
+        
+        editingSaleId = null;
+        document.querySelector('button[onclick="recordCupSale()"]').textContent = '✅ Record Cup Sale';
+        
+        const successMsg = document.getElementById('saleSuccess');
+        successMsg.textContent = '✓ Cup sale updated successfully!';
+        successMsg.classList.add('show');
+        setTimeout(() => successMsg.classList.remove('show'), 3000);
+    } else {
+        // Check inventory
+        if (inventoryData[size] <= 0) {
+            alert(`Out of ${size} cups! Please restock.`);
+            return;
+        }
+        
+        if (addon === 'Yes' && inventoryData['Nata'] <= 0) {
+            alert('Out of Nata de Coco! Please restock.');
+            return;
+        }
+        
+        // Calculate price
+        const basePrice = PRICING.sizes[size];
+        const addonPrice = PRICING.addon[addon];
+        const totalPrice = basePrice + addonPrice;
+        const profit = totalPrice - cupCost;
+        
+        // Create sale record
+        const sale = {
+            id: Date.now(),
+            size: size,
+            addon: addon,
+            price: totalPrice,
+            cost: cupCost,
+            profit: profit,
+            timestamp: new Date().toLocaleTimeString()
+        };
+        
+        // Add to sales data
+        salesData.push(sale);
+        
+        // Deduct inventory
+        inventoryData[size]--;
+        if (addon === 'Yes') {
+            inventoryData['Nata']--;
+        }
+        
+        const successMsg = document.getElementById('saleSuccess');
+        successMsg.textContent = '✓ Cup sale recorded successfully!';
+        successMsg.classList.add('show');
+        setTimeout(() => successMsg.classList.remove('show'), 3000);
     }
     
     // Save to localStorage
@@ -119,14 +191,37 @@ function recordCupSale() {
     document.getElementById('cupCost').value = '';
     document.getElementById('priceDisplay').textContent = 'Price: ₱0.00';
     
-    // Show success message
-    const successMsg = document.getElementById('saleSuccess');
-    successMsg.classList.add('show');
-    setTimeout(() => successMsg.classList.remove('show'), 3000);
-    
     // Update displays
     updateDashboard();
     renderInventory();
+}
+
+// Edit a sale
+function editSale(saleId) {
+    const sale = salesData.find(s => s.id === saleId);
+    if (!sale) return;
+    
+    editingSaleId = saleId;
+    document.getElementById('size').value = sale.size;
+    document.getElementById('addon').value = sale.addon;
+    document.getElementById('cupCost').value = sale.cost;
+    updatePrice();
+    
+    // Change button text
+    document.querySelector('button[onclick="recordCupSale()"]').textContent = '✏️ Update Cup Sale';
+    
+    // Scroll to form
+    document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Cancel edit
+function cancelEdit() {
+    editingSaleId = null;
+    document.getElementById('size').value = '';
+    document.getElementById('addon').value = 'No';
+    document.getElementById('cupCost').value = '';
+    document.getElementById('priceDisplay').textContent = 'Price: ₱0.00';
+    document.querySelector('button[onclick="recordCupSale()"]').textContent = '✅ Record Cup Sale';
 }
 
 // Add expense
@@ -176,6 +271,17 @@ function deleteExpense(expenseId) {
     updateDashboard();
 }
 
+// Edit expense
+function editExpense(expenseId) {
+    const expense = expensesData.find(e => e.id === expenseId);
+    if (!expense) return;
+    
+    document.getElementById('expenseDesc').value = expense.description;
+    document.getElementById('expenseAmount').value = expense.amount;
+    
+    deleteExpense(expenseId);
+}
+
 // Render expense log
 function renderExpenseLog() {
     const expenseLog = document.getElementById('expenseLog');
@@ -195,6 +301,7 @@ function renderExpenseLog() {
                 </div>
                 <div style="margin-top: 5px; font-size: 0.85em;">
                     💸 ₱${expense.amount.toFixed(2)}
+                    <button class="delete-btn btn-small" onclick="editExpense(${expense.id})" style="margin-top: 0; background: #667eea;">✏️</button>
                     <button class="delete-btn btn-small" onclick="deleteExpense(${expense.id})" style="margin-top: 0;">🗑️</button>
                 </div>
             </div>
@@ -242,7 +349,8 @@ function updateNata() {
     document.getElementById('addNata').value = '10';
     document.getElementById('nataPCS').value = inventoryData['Nata'];
     
-    const successMsg = document.getElementById('invSuccess');
+    const successMsg = document.getElementById('invSuccess16');
+    successMsg.textContent = '✓ Nata stock updated!';
     successMsg.classList.add('show');
     setTimeout(() => successMsg.classList.remove('show'), 3000);
     
@@ -350,7 +458,7 @@ function updateDashboard() {
         document.getElementById('dailySummary').innerHTML = `
             <p><strong>Today's Performance:</strong></p>
             <p>✅ Total Cups Sold: ${salesData.length} (${mediumCount}x 12oz, ${largeCount}x 16oz)</p>
-            <p>💰 Revenue: ₱${totalRevenue.toFixed(2)} | Cost: ₱${totalCost.toFixed(2)} | Profit: ₱${totalProfit.toFixed(2)}</p>
+            <p>💰 Revenue: ₱${totalRevenue.toFixed(2)} | Cost: ₱${totalCost.toFixed(2)} | Profit: ���${totalProfit.toFixed(2)}</p>
             <p>📊 Profit Margin: ${profitMargin}%</p>
         `;
     }
@@ -433,7 +541,10 @@ function renderSummaryTable() {
                 <td>₱${sale.cost.toFixed(2)}</td>
                 <td ${profitClass}>₱${sale.profit.toFixed(2)}</td>
                 <td>${sale.timestamp}</td>
-                <td><button class="delete-btn btn-small" onclick="deleteSale(${sale.id})">🗑️</button></td>
+                <td>
+                    <button class="delete-btn btn-small" onclick="editSale(${sale.id})" style="background: #667eea;">✏️ Edit</button>
+                    <button class="delete-btn btn-small" onclick="deleteSale(${sale.id})">🗑️ Delete</button>
+                </td>
             </tr>
         `;
     });
