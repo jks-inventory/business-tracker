@@ -322,17 +322,44 @@
         .flavor-emoji {
             font-size: 1.5em;
         }
+
+        .size-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .size-stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            text-align: center;
+        }
+
+        .size-stat-box h4 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .size-stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🥤 JK's Fruit Soda - Daily Cup Sales Tracker</h1>
-            <p>Track Revenue, Profit & Inventory Per Cup</p>
+            <h1>🥤 JK's Fruit Soda - Daily Business Tracker</h1>
+            <p>Track Revenue, Profit & Inventory Per Cup Size</p>
         </header>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('sales')">📊 Sell Cup</button>
+            <button class="tab-btn" onclick="switchTab('expenses')">💸 Add Expenses</button>
             <button class="tab-btn" onclick="switchTab('inventory')">📦 Inventory</button>
             <button class="tab-btn" onclick="switchTab('summary')">📈 Summary</button>
         </div>
@@ -387,26 +414,37 @@
                         <span class="metric-value" id="totalRevenue">₱0.00</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Total Cost</span>
+                        <span class="metric-label">Total Cost (Cups)</span>
                         <span class="metric-value" id="totalCost">₱0.00</span>
                     </div>
-                    <div class="metric profit">
-                        <span class="metric-label">Total Profit</span>
+                    <div class="metric">
+                        <span class="metric-label">Total Expenses</span>
+                        <span class="metric-value" id="totalExpenses">₱0.00</span>
+                    </div>
+                    <div class="metric loss">
+                        <span class="metric-label">Net Profit</span>
                         <span class="metric-value" id="totalProfit">₱0.00</span>
                     </div>
                     <div class="metric">
                         <span class="metric-label">Profit Margin</span>
                         <span class="metric-value" id="profitMargin">0%</span>
                     </div>
-                    <div class="metric">
-                        <span class="metric-label">Avg Profit/Cup</span>
-                        <span class="metric-value" id="avgProfit">₱0.00</span>
-                    </div>
                 </div>
 
                 <div class="card">
-                    <h2>🏆 Sales by Flavor</h2>
-                    <div id="flavorStats"></div>
+                    <h2>📊 Sales by Cup Size</h2>
+                    <div class="size-stats">
+                        <div class="size-stat-box">
+                            <h4>12 oz (Medium)</h4>
+                            <div class="size-stat-value" id="mediumSold">0</div>
+                            <small>cups sold</small>
+                        </div>
+                        <div class="size-stat-box">
+                            <h4>16 oz (Large)</h4>
+                            <div class="size-stat-value" id="largeSold">0</div>
+                            <small>cups sold</small>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card full-width">
@@ -415,6 +453,45 @@
                         <p style="text-align: center; color: #999;">No sales recorded yet...</p>
                     </div>
                     <button onclick="clearDailyLog()" class="btn-small" style="width: 100%; margin-top: 15px;">🗑️ Clear All Sales</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXPENSES TAB -->
+        <div id="expenses" class="tab-content">
+            <div class="dashboard">
+                <div class="card">
+                    <h2>💸 Add Business Expense</h2>
+                    <div class="input-group">
+                        <label>Expense Description</label>
+                        <input type="text" id="expenseDesc" placeholder="e.g., Fruit juice, cups, supplies">
+                    </div>
+                    <div class="input-group">
+                        <label>Amount (₱)</label>
+                        <input type="number" id="expenseAmount" min="0" step="0.01" placeholder="e.g., 500.00">
+                    </div>
+                    <button onclick="addExpense()">➕ Add Expense</button>
+                    <div class="success" id="expenseSuccess">✓ Expense recorded!</div>
+                </div>
+
+                <div class="card">
+                    <h2>💰 Today's Expenses Summary</h2>
+                    <div class="metric">
+                        <span class="metric-label">Total Expenses</span>
+                        <span class="metric-value" id="expenseSummaryTotal">₱0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Expense Count</span>
+                        <span class="metric-value" id="expenseCount">0</span>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <h2>📋 Expense Log (Most Recent First)</h2>
+                    <div class="daily-log" id="expenseLog">
+                        <p style="text-align: center; color: #999;">No expenses recorded yet...</p>
+                    </div>
+                    <button onclick="clearExpenses()" class="btn-small" style="width: 100%; margin-top: 15px;">🗑️ Clear All Expenses</button>
                 </div>
             </div>
         </div>
@@ -490,22 +567,34 @@
                 </div>
 
                 <div class="card">
-                    <h2>🏆 Performance</h2>
+                    <h2>📊 Size Performance</h2>
                     <div class="metric">
-                        <span class="metric-label">Best Seller</span>
-                        <span class="metric-value" id="bestSeller">-</span>
+                        <span class="metric-label">12oz (Medium) Sold</span>
+                        <span class="metric-value" id="perfMedium">0</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Most Profitable</span>
-                        <span class="metric-value" id="mostProfitable">-</span>
+                        <span class="metric-label">16oz (Large) Sold</span>
+                        <span class="metric-value" id="perfLarge">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>💵 Financial Summary</h2>
+                    <div class="metric">
+                        <span class="metric-label">Total Revenue</span>
+                        <span class="metric-value" id="summaryRevenue">₱0.00</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Total Cups Sold</span>
-                        <span class="metric-value" id="totalUnits">0</span>
+                        <span class="metric-label">Total Cup Cost</span>
+                        <span class="metric-value" id="summaryCost">₱0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Total Expenses</span>
+                        <span class="metric-value" id="summaryExpenses">₱0.00</span>
                     </div>
                     <div class="metric profit">
-                        <span class="metric-label">Total Daily Profit</span>
-                        <span class="metric-value" id="totalDailyProfit">₱0.00</span>
+                        <span class="metric-label">Net Profit</span>
+                        <span class="metric-value" id="summaryProfit">₱0.00</span>
                     </div>
                 </div>
 
