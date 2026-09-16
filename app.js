@@ -12,6 +12,7 @@ const PRICING = {
 
 // Initialize data from localStorage
 let salesData = JSON.parse(localStorage.getItem('jksSalesData')) || [];
+let expensesData = JSON.parse(localStorage.getItem('jksExpensesData')) || [];
 let inventoryData = JSON.parse(localStorage.getItem('jksInventoryData')) || {
     'Green Apple': 20,
     'Blueberry': 20,
@@ -134,6 +135,81 @@ function recordCupSale() {
     renderInventory();
 }
 
+// Add expense
+function addExpense() {
+    const desc = document.getElementById('expenseDesc').value.trim();
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    
+    if (!desc) {
+        alert('Please enter expense description');
+        return;
+    }
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+    }
+    
+    const expense = {
+        id: Date.now(),
+        description: desc,
+        amount: amount,
+        timestamp: new Date().toLocaleTimeString()
+    };
+    
+    expensesData.push(expense);
+    
+    // Clear form
+    document.getElementById('expenseDesc').value = '';
+    document.getElementById('expenseAmount').value = '';
+    
+    // Show success message
+    const successMsg = document.getElementById('expenseSuccess');
+    successMsg.classList.add('show');
+    setTimeout(() => successMsg.classList.remove('show'), 3000);
+    
+    saveData();
+    updateDashboard();
+}
+
+// Delete expense
+function deleteExpense(expenseId) {
+    if (!confirm('Delete this expense?')) return;
+    
+    expensesData = expensesData.filter(e => e.id !== expenseId);
+    
+    saveData();
+    updateDashboard();
+}
+
+// Render expense log
+function renderExpenseLog() {
+    const expenseLog = document.getElementById('expenseLog');
+    
+    if (expensesData.length === 0) {
+        expenseLog.innerHTML = '<p style="text-align: center; color: #999;">No expenses recorded yet...</p>';
+        return;
+    }
+    
+    let html = '';
+    [...expensesData].reverse().forEach(expense => {
+        html += `
+            <div class="log-entry">
+                <div>
+                    <span class="log-time">${expense.timestamp}</span> - 
+                    ${expense.description}
+                </div>
+                <div style="margin-top: 5px; font-size: 0.85em;">
+                    💸 ₱${expense.amount.toFixed(2)}
+                    <button class="delete-btn btn-small" onclick="deleteExpense(${expense.id})" style="margin-top: 0;">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    expenseLog.innerHTML = html;
+}
+
 // Add inventory
 function addInventory() {
     const flavor = document.getElementById('invFlavor').value;
@@ -228,83 +304,82 @@ function updateDashboard() {
         document.getElementById('cupsSold').textContent = '0';
         document.getElementById('totalRevenue').textContent = '₱0.00';
         document.getElementById('totalCost').textContent = '₱0.00';
+        document.getElementById('totalExpenses').textContent = '₱0.00';
         document.getElementById('totalProfit').textContent = '₱0.00';
         document.getElementById('profitMargin').textContent = '0%';
-        document.getElementById('avgProfit').textContent = '₱0.00';
-        document.getElementById('totalDailyProfit').textContent = '₱0.00';
-        document.getElementById('flavorStats').innerHTML = '<p style="color: #999;">No sales yet</p>';
+        document.getElementById('mediumSold').textContent = '0';
+        document.getElementById('largeSold').textContent = '0';
+        document.getElementById('perfMedium').textContent = '0';
+        document.getElementById('perfLarge').textContent = '0';
+        document.getElementById('summaryRevenue').textContent = '₱0.00';
+        document.getElementById('summaryCost').textContent = '₱0.00';
+        document.getElementById('summaryProfit').textContent = '₱0.00';
         document.getElementById('dailyLog').innerHTML = '<p style="text-align: center; color: #999;">No sales recorded yet...</p>';
         document.getElementById('summaryTable').innerHTML = '';
         document.getElementById('dailySummary').innerHTML = '<p>No sales recorded yet. Start selling cups to see the summary.</p>';
-        document.getElementById('bestSeller').textContent = '-';
-        document.getElementById('mostProfitable').textContent = '-';
-        document.getElementById('totalUnits').textContent = '0';
-        return;
+    } else {
+        // Calculate totals
+        const totalRevenue = salesData.reduce((sum, sale) => sum + sale.price, 0);
+        const totalCost = salesData.reduce((sum, sale) => sum + sale.cost, 0);
+        
+        // Count by size
+        const mediumCount = salesData.filter(s => s.size === 'Medium').length;
+        const largeCount = salesData.filter(s => s.size === 'Large').length;
+        
+        const totalProfit = totalRevenue - totalCost;
+        const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
+        
+        // Update metrics
+        document.getElementById('cupsSold').textContent = salesData.length;
+        document.getElementById('totalRevenue').textContent = `₱${totalRevenue.toFixed(2)}`;
+        document.getElementById('totalCost').textContent = `₱${totalCost.toFixed(2)}`;
+        document.getElementById('totalProfit').textContent = `₱${totalProfit.toFixed(2)}`;
+        document.getElementById('profitMargin').textContent = `${profitMargin}%`;
+        document.getElementById('mediumSold').textContent = mediumCount;
+        document.getElementById('largeSold').textContent = largeCount;
+        document.getElementById('perfMedium').textContent = mediumCount;
+        document.getElementById('perfLarge').textContent = largeCount;
+        document.getElementById('summaryRevenue').textContent = `₱${totalRevenue.toFixed(2)}`;
+        document.getElementById('summaryCost').textContent = `₱${totalCost.toFixed(2)}`;
+        
+        // Daily log (most recent first)
+        renderDailyLog();
+        
+        // Summary table
+        renderSummaryTable();
+        
+        // Daily summary text
+        document.getElementById('dailySummary').innerHTML = `
+            <p><strong>Today's Performance:</strong></p>
+            <p>✅ Total Cups Sold: ${salesData.length} (${mediumCount}x 12oz, ${largeCount}x 16oz)</p>
+            <p>💰 Revenue: ₱${totalRevenue.toFixed(2)} | Cost: ₱${totalCost.toFixed(2)} | Profit: ₱${totalProfit.toFixed(2)}</p>
+            <p>📊 Profit Margin: ${profitMargin}%</p>
+        `;
     }
     
-    // Calculate totals
-    const totalRevenue = salesData.reduce((sum, sale) => sum + sale.price, 0);
-    const totalCost = salesData.reduce((sum, sale) => sum + sale.cost, 0);
-    const totalProfit = totalRevenue - totalCost;
-    const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
-    const avgProfit = salesData.length > 0 ? (totalProfit / salesData.length) : 0;
-    
-    // Update metrics
-    document.getElementById('cupsSold').textContent = salesData.length;
-    document.getElementById('totalRevenue').textContent = `₱${totalRevenue.toFixed(2)}`;
-    document.getElementById('totalCost').textContent = `₱${totalCost.toFixed(2)}`;
-    document.getElementById('totalProfit').textContent = `₱${totalProfit.toFixed(2)}`;
-    document.getElementById('profitMargin').textContent = `${profitMargin}%`;
-    document.getElementById('avgProfit').textContent = `₱${avgProfit.toFixed(2)}`;
-    document.getElementById('totalDailyProfit').textContent = `₱${totalProfit.toFixed(2)}`;
-    
-    // Flavor statistics
-    updateFlavorStats();
-    
-    // Daily log (most recent first)
-    renderDailyLog();
-    
-    // Summary table
-    renderSummaryTable();
-    
-    // Performance stats
-    updatePerformanceStats();
+    // Update expenses
+    updateExpenses();
     
     // Low stock alerts
     updateLowStockAlerts();
 }
 
-// Update flavor statistics
-function updateFlavorStats() {
-    const flavorStats = {};
+// Update expenses display
+function updateExpenses() {
+    const totalExpenses = expensesData.reduce((sum, e) => sum + e.amount, 0);
+    document.getElementById('totalExpenses').textContent = `₱${totalExpenses.toFixed(2)}`;
+    document.getElementById('expenseSummaryTotal').textContent = `₱${totalExpenses.toFixed(2)}`;
+    document.getElementById('expenseCount').textContent = expensesData.length;
+    document.getElementById('summaryExpenses').textContent = `₱${totalExpenses.toFixed(2)}`;
     
-    salesData.forEach(sale => {
-        if (!flavorStats[sale.flavor]) {
-            flavorStats[sale.flavor] = { count: 0, profit: 0 };
-        }
-        flavorStats[sale.flavor].count++;
-        flavorStats[sale.flavor].profit += sale.profit;
-    });
+    // Update net profit
+    const totalRevenue = salesData.reduce((sum, sale) => sum + sale.price, 0);
+    const totalCost = salesData.reduce((sum, sale) => sum + sale.cost, 0);
+    const netProfit = totalRevenue - totalCost - totalExpenses;
     
-    let html = '';
-    const emojis = {
-        'Green Apple': '🟢',
-        'Blueberry': '🔵',
-        'Strawberry': '🔴',
-        'Lychee': '🩷'
-    };
+    document.getElementById('summaryProfit').textContent = `₱${netProfit.toFixed(2)}`;
     
-    Object.keys(flavorStats).sort().forEach(flavor => {
-        const stats = flavorStats[flavor];
-        html += `
-            <div class="metric">
-                <span class="metric-label">${emojis[flavor]} ${flavor}</span>
-                <span style="color: #666; font-size: 0.95em;">${stats.count} cups | Profit: ₱${stats.profit.toFixed(2)}</span>
-            </div>
-        `;
-    });
-    
-    document.getElementById('flavorStats').innerHTML = html || '<p style="color: #999;">No sales yet</p>';
+    renderExpenseLog();
 }
 
 // Render daily log (most recent first)
@@ -404,56 +479,6 @@ function deleteSale(saleId) {
     renderInventory();
 }
 
-// Update performance stats
-function updatePerformanceStats() {
-    if (salesData.length === 0) {
-        document.getElementById('bestSeller').textContent = '-';
-        document.getElementById('mostProfitable').textContent = '-';
-        document.getElementById('totalUnits').textContent = '0';
-        return;
-    }
-    
-    const flavorStats = {};
-    const emojis = {
-        'Green Apple': '🟢',
-        'Blueberry': '🔵',
-        'Strawberry': '🔴',
-        'Lychee': '🩷'
-    };
-    
-    salesData.forEach(sale => {
-        if (!flavorStats[sale.flavor]) {
-            flavorStats[sale.flavor] = { count: 0, totalProfit: 0 };
-        }
-        flavorStats[sale.flavor].count++;
-        flavorStats[sale.flavor].totalProfit += sale.profit;
-    });
-    
-    // Best seller (most cups sold)
-    let bestSeller = Object.keys(flavorStats)[0];
-    let maxCount = 0;
-    Object.keys(flavorStats).forEach(flavor => {
-        if (flavorStats[flavor].count > maxCount) {
-            maxCount = flavorStats[flavor].count;
-            bestSeller = flavor;
-        }
-    });
-    
-    // Most profitable
-    let mostProfitable = Object.keys(flavorStats)[0];
-    let maxProfit = 0;
-    Object.keys(flavorStats).forEach(flavor => {
-        if (flavorStats[flavor].totalProfit > maxProfit) {
-            maxProfit = flavorStats[flavor].totalProfit;
-            mostProfitable = flavor;
-        }
-    });
-    
-    document.getElementById('bestSeller').textContent = `${emojis[bestSeller]} ${bestSeller} (${maxCount} cups)`;
-    document.getElementById('mostProfitable').textContent = `${emojis[mostProfitable]} ${mostProfitable} (₱${maxProfit.toFixed(2)})`;
-    document.getElementById('totalUnits').textContent = salesData.length;
-}
-
 // Update low stock alerts
 function updateLowStockAlerts() {
     const lowStockAlert = document.getElementById('lowStockAlert');
@@ -501,8 +526,18 @@ function clearDailyLog() {
     renderInventory();
 }
 
+// Clear expenses
+function clearExpenses() {
+    if (!confirm('Delete ALL expenses for today? This cannot be undone!')) return;
+    
+    expensesData = [];
+    saveData();
+    updateDashboard();
+}
+
 // Save to localStorage
 function saveData() {
     localStorage.setItem('jksSalesData', JSON.stringify(salesData));
+    localStorage.setItem('jksExpensesData', JSON.stringify(expensesData));
     localStorage.setItem('jksInventoryData', JSON.stringify(inventoryData));
 }
